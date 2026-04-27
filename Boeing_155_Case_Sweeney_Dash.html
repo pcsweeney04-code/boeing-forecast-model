@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boeing · 4-Year Forecast Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Barlow+Semi+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* Boeing-branded grayscale palette */
+  --bg:#111417;--panel:#1a1d21;--bdr:#2e3238;--bdr-hi:#3d4349;
+  --blu:#003087;--blu-hi:#0085c3;--blu-bright:#4fc3f7;
+  --green:#00e676;--red:#e53935;
+  --gold:#ffd700;--orange:#ff7043;--purple:#ea80fc;--teal:#69f0ae;
+  --txt:#c8cdd4;--txt-d:#6b7280;--txt-b:#f0f2f5;
+  --mono:'IBM Plex Mono','Courier New',monospace;
+  --body:'Barlow Semi Condensed','Helvetica Neue',sans-serif;
+  /* Scenario colors unchanged */
+  --c-base:#4fc3f7;--c-up:#69f0ae;--c-dn:#ff7043;--c-liq:#ea80fc;--c-cust:#ffd700;
+}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--body);font-size:14px;overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 4px,rgba(0,0,0,.018) 4px,rgba(0,0,0,.018) 5px)}
+.hdr{position:sticky;top:0;z-index:200;
+  background:linear-gradient(180deg,#0a0c0f 0%,#111417 100%);
+  border-bottom:2px solid var(--blu);
+  box-shadow:0 2px 16px rgba(0,48,135,.35);
+  height:58px;display:flex;align-items:center;padding:0 22px;justify-content:space-between;gap:16px}
+.brand{font-family:var(--mono);font-weight:600;font-size:15px;color:var(--txt-b);letter-spacing:.14em;white-space:nowrap}
+.brand span{color:var(--blu-hi)}
+.vsep{width:1px;height:24px;background:var(--bdr-hi);flex-shrink:0}
+.hmeta{font-family:var(--mono);font-size:9px;color:var(--txt-d);line-height:1.65;letter-spacing:.04em}
+.hmeta strong{color:var(--txt)}
+.badge{font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 11px;border-radius:2px;
+  letter-spacing:.12em;text-transform:uppercase;border:1px solid;white-space:nowrap}
+.bp{color:var(--green);border-color:var(--green);background:rgba(0,230,118,.08)}
+.bw{color:var(--gold);border-color:var(--gold);background:rgba(255,215,0,.08)}
+.bf{color:var(--red);border-color:var(--red);background:rgba(255,68,68,.08)}
+.bu{color:var(--txt-d);border-color:var(--txt-d);background:transparent}
+.tabs{background:#16191d;border-bottom:1px solid var(--bdr-hi);padding:0 22px;display:flex;align-items:stretch}
+.tab{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;
+  padding:10px 18px;cursor:pointer;border:none;background:transparent;color:var(--txt-d);
+  border-bottom:2.5px solid transparent;transition:all .18s;display:flex;align-items:center;gap:7px}
+.tab:hover{color:var(--txt-b);background:rgba(255,255,255,.04)}
+.tab.active{color:var(--c);border-bottom-color:var(--c);font-weight:600}
+.tab.base{--c:var(--c-base)}.tab.upside{--c:var(--c-up)}.tab.downside{--c:var(--c-dn)}
+.tab.liquidity_stress{--c:var(--c-liq)}.tab.custom{--c:var(--c-cust)}.tab.sensitivity{--c:#90caf9}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--c);flex-shrink:0}
+.notice{margin-left:auto;display:flex;align-items:center;font-family:var(--mono);font-size:8px;
+  color:var(--txt-d);letter-spacing:.04em;padding:0 6px}
+.pulse{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);
+  animation:pulse 2.4s ease-in-out infinite;margin-right:6px}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+.main{padding:14px 22px 24px;max-width:1700px;margin:0 auto}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:11px}
+.kpi{background:var(--panel);border:1px solid var(--bdr);border-top:2.5px solid var(--ac,var(--blu));
+  padding:11px 13px 9px;transition:border-color .25s;animation:fi .4s ease both}
+.kpi:nth-child(1){animation-delay:.04s}.kpi:nth-child(2){animation-delay:.08s}
+.kpi:nth-child(3){animation-delay:.12s}.kpi:nth-child(4){animation-delay:.16s}.kpi:nth-child(5){animation-delay:.2s}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.kl{font-family:var(--mono);font-size:8px;color:var(--txt-d);letter-spacing:.11em;text-transform:uppercase;margin-bottom:5px}
+.kv{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--txt-b);line-height:1;transition:color .2s}
+.kv.neg{color:var(--red)}.kv.pos{color:var(--green)}.kv.wrn{color:var(--gold)}
+.ks{font-family:var(--mono);font-size:8px;color:var(--txt-d);margin-top:4px}
+.custom-panel{background:var(--panel);border:1px solid var(--bdr);border-top:2px solid var(--c-cust);
+  margin-bottom:7px;padding:16px 20px;display:none}
+.custom-panel.visible{display:block}
+.cp-title{font-family:var(--mono);font-size:9px;color:var(--c-cust);letter-spacing:.14em;text-transform:uppercase;
+  margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;justify-content:space-between}
+.cp-title .note{color:var(--txt-d);font-size:8px}
+.sliders-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 20px}
+.si{display:flex;flex-direction:column;gap:4px}
+.sl{font-family:var(--mono);font-size:9px;color:var(--txt-d);letter-spacing:.08em;
+  text-transform:uppercase;display:flex;justify-content:space-between}
+.sl .sv{color:var(--c-cust);font-weight:600}
+input[type=range]{width:100%;height:4px;background:var(--bdr);border-radius:2px;
+  outline:none;-webkit-appearance:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--c-cust);cursor:pointer;border:2px solid var(--bg);box-shadow:0 0 6px rgba(255,215,0,.4)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--c-cust);
+  cursor:pointer;border:2px solid var(--bg)}
+.reset-btn{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  padding:5px 14px;background:transparent;border:1px solid var(--c-cust);color:var(--c-cust);
+  cursor:pointer;border-radius:2px;transition:all .15s}
+.reset-btn:hover{background:rgba(255,215,0,.08)}
+.custom-note{font-family:var(--mono);font-size:8.5px;color:var(--txt-d);margin-top:10px;
+  padding-top:8px;border-top:1px solid var(--bdr);line-height:1.6}
+.custom-note strong{color:var(--txt)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px}
+.cp{background:var(--panel);border:1px solid var(--bdr);padding:5px}
+.full{grid-column:1/-1}
+.bot{display:grid;grid-template-columns:280px 1fr;gap:7px;margin-top:0}
+.panel{background:var(--panel);border:1px solid var(--bdr);padding:15px}
+.ptitle{font-family:var(--mono);font-size:9px;color:var(--blu-hi);letter-spacing:.14em;text-transform:uppercase;
+  margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px}
+.ptitle::before{content:'';width:3px;height:12px;background:var(--blu);display:inline-block;border-radius:1px}
+.albl{font-family:var(--mono);font-size:10px;font-weight:600;margin-bottom:9px}
+.arow{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(46,50,56,.7);gap:6px}
+.arow:last-child{border-bottom:none}
+.ak{font-family:var(--mono);font-size:9px;color:var(--txt-d)}
+.av{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--txt-b);text-align:right}
+.comp-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:10px}
+.comp-tbl th{font-size:8px;letter-spacing:.1em;text-transform:uppercase;padding:7px 10px;
+  text-align:right;border-bottom:1px solid var(--bdr-hi);color:var(--txt-d)}
+.comp-tbl th:first-child{text-align:left}
+.comp-tbl td{padding:5px 10px;text-align:right;border-bottom:1px solid rgba(46,50,56,.6);color:var(--txt)}
+.comp-tbl td:first-child{text-align:left;color:var(--txt-d);font-size:9px}
+.comp-tbl tr:last-child td{border-bottom:none}
+.col-b{color:var(--c-base)}.col-u{color:var(--c-up)}.col-d{color:var(--c-dn)}
+.col-l{color:var(--c-liq)}.col-c{color:var(--c-cust)}
+.dg{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.di{display:flex;align-items:center;gap:5px;padding:4px 6px;background:rgba(0,0,0,.35);border-radius:2px}
+.lt{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.lt.pass{background:var(--green);box-shadow:0 0 5px var(--green)}
+.lt.warn{background:var(--gold);box-shadow:0 0 5px var(--gold)}
+.lt.fail{background:var(--red);box-shadow:0 0 5px var(--red)}
+.dt{font-family:var(--mono);font-size:8.5px;color:var(--txt-d)}
+.ftr{margin-top:16px;padding:12px 22px;border-top:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center}
+.ft{font-family:var(--mono);font-size:8px;color:var(--txt-d);letter-spacing:.04em}
+@media(max-width:1100px){
+  .kpis{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:1fr}
+  .bot{grid-template-columns:1fr}.sliders-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div style="display:flex;align-items:center;gap:14px;min-width:0">
+    <div class="brand">THE <span>BOEING</span> COMPANY</div>
+    <div class="vsep"></div>
+    <div class="hmeta">
+      <strong>3-STATEMENT FORECAST — 16Q HORIZON (2026–2029)</strong> &thinsp;|&thinsp; FIN 4453 Capstone &thinsp;|&thinsp; Warrington College of Business<br>
+      Model&thinsp;: <strong>boeing_capstone_combined_v1</strong> &thinsp;|&thinsp; Data&thinsp;: <strong>BA_quarterly_statements.xlsx</strong> &thinsp;|&thinsp; Run&thinsp;: <strong>2026-04-19T11:47:54</strong>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:13px;flex-shrink:0">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--txt-d);text-align:right;line-height:1.5">
+      HORIZON<strong style="color:var(--txt);font-size:11px;display:block">16Q · 2026–2029</strong>
+    </div>
+    <div class="vsep"></div>
+    <div id="gbadge" class="badge bw">● WARN</div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab base active"       onclick="setScen('base')"><span class="dot"></span>Base Case</button>
+  <button class="tab upside"            onclick="setScen('upside')"><span class="dot"></span>Upside</button>
+  <button class="tab downside"          onclick="setScen('downside')"><span class="dot"></span>Downside</button>
+  <button class="tab liquidity_stress"  onclick="setScen('liquidity_stress')"><span class="dot"></span>Liquidity Stress</button>
+  <button class="tab custom"            onclick="setScen('custom')"><span class="dot"></span>⚙ Custom</button>
+  <button class="tab sensitivity" onclick="setScen('sensitivity')"><span class="dot"></span>Sensitivity</button>
+  <div class="notice"><span class="pulse"></span>Named scenarios from authoritative outputs · Custom runs live in browser</div>
+</nav>
+
+<main class="main">
+
+  <!-- Sensitivity panel -->
+  <div id="sens-panel" style="display:none;margin-bottom:7px">
+    <div style="background:var(--panel);border:1px solid var(--bdr);border-top:2px solid #90caf9;padding:14px 18px;margin-bottom:7px">
+      <div style="font-family:var(--mono);font-size:9px;color:#90caf9;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px">Two-Way Sensitivity — Base Assumptions + Applied Shocks</div>
+      <div style="font-family:var(--mono);font-size:8.5px;color:var(--txt-d);line-height:1.6">Each cell applies the stated quarterly volume and price shock additively to base assumptions and reruns the full 16-quarter forecast. Center cell (0%/0%) = base case exactly. Source: <code>two_way_sensitivity_long.csv</code></div>
+    </div>
+    <div style="margin-bottom:7px">
+      <div style="background:var(--panel);border:1px solid var(--bdr);padding:5px"><div id="ch-hm-cash" style="height:380px"></div></div>
+    </div>
+    <div style="background:var(--panel);border:1px solid var(--bdr);padding:12px 16px;font-family:var(--mono);font-size:8.5px;color:var(--txt-d);line-height:1.9">
+      <span style="color:var(--txt);font-weight:600">Ending Cash:</span> Green = positive balance. Red = deeply negative. Counterintuitively, negative volume/price shocks <em>improve</em> cash — Boeing's 340-day inventory cycle means shrinking revenue releases working capital faster than it loses profit (growth trap). &nbsp;|&nbsp;
+    </div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="kl">Final Qtr Revenue</div><div class="kv" id="kv-rev">—</div><div class="ks">16th forecast quarter</div></div>
+    <div class="kpi"><div class="kl">Final Qtr EBITDA</div><div class="kv" id="kv-ebitda">—</div><div class="ks" id="ks-margin">avg margin</div></div>
+    <div class="kpi"><div class="kl">Ending Cash</div><div class="kv" id="kv-cash">—</div><div class="ks" id="ks-mincash">min over horizon</div></div>
+    <div class="kpi"><div class="kl">Peak Revolver</div><div class="kv" id="kv-revl">—</div><div class="ks">$15B facility</div></div>
+    <div class="kpi"><div class="kl">Diagnostic Status</div><div class="kv" id="kv-diag">—</div><div class="ks" id="ks-diag">hard checks</div></div>
+  </div>
+
+  <!-- Custom sliders panel -->
+  <div class="custom-panel" id="custom-panel">
+    <div class="cp-title">
+      ⚙ Custom Scenario — Live Forecast Engine
+      <div style="display:flex;gap:10px;align-items:center">
+        <span class="note">Adjust any assumption — model reruns instantly in browser</span>
+        <button class="reset-btn" onclick="resetCustom()">↺ Reset to Base</button>
+      </div>
+    </div>
+
+    <div class="sliders-grid">
+      <div class="si">
+        <div class="sl">Gross Margin<span class="sv" id="sv-gm">8.0%</span></div>
+        <input type="range" id="sl-gm" min="-15" max="20" step="0.5" value="8.0"
+          title="Higher GM → wider EBITDA → better interest coverage → less revolver. Must reach ~8.5%+ to achieve ICR>1x at current debt levels."
+          oninput="onSlider('gm',this.value/100,'pct')">
+        <div style="font-family:var(--mono);font-size:7.5px;color:var(--txt-d);margin-top:2px">↑ widens EBITDA → improves ICR directly</div>
+      </div>
+      <div class="si">
+        <div class="sl">OpEx Ratio<span class="sv" id="sv-opex">7.5%</span></div>
+        <input type="range" id="sl-opex" min="4" max="18" step="0.5" value="7.5"
+          title="Lower OpEx → wider EBITDA. Same effect as raising gross margin but from the cost side. SGA + R&D as % of revenue."
+          oninput="onSlider('opex',this.value/100,'pct')">
+        <div style="font-family:var(--mono);font-size:7.5px;color:var(--txt-d);margin-top:2px">↑ narrows EBITDA margin directly</div>
+      </div>
+      <div class="si">
+        <div class="sl">Volume Growth (q/q)<span class="sv" id="sv-vol">1.2%</span></div>
+        <input type="range" id="sl-vol" min="-8" max="10" step="0.25" value="1.2"
+          title="Working capital trap: higher growth → more inventory to fund (DIO=340 days) → cash drain exceeds extra profit. Growth costs Boeing cash in the short run."
+          oninput="onSlider('vol',this.value/100,'pct2')">
+        <div style="font-family:var(--mono);font-size:7.5px;color:var(--txt-d);margin-top:2px">*growth trap: ↑ rev → ↑ inventory cash drain (340 DIO)</div>
+      </div>
+      <div class="si">
+        <div class="sl">Price Growth (q/q)<span class="sv" id="sv-price">0.0%</span></div>
+        <input type="range" id="sl-price" min="-5" max="5" step="0.25" value="0.0"
+          title="Same growth trap as volume: higher prices → higher revenue → higher COGS → more inventory required. The extra profit doesn't offset the working capital drain at 340 DIO."
+          oninput="onSlider('price',this.value/100,'pct2')">
+        <div style="font-family:var(--mono);font-size:7.5px;color:var(--txt-d);margin-top:2px">*same trap: ↑ price → ↑ COGS base → ↑ inventory drain</div>
+      </div>
+      <div class="si">
+        <div class="sl">DIO (days)<span class="sv" id="sv-dio">340</span></div>
+        <input type="range" id="sl-dio" min="150" max="600" step="5" value="340"
+          title="Most powerful lever. Boeing's pre-crisis DIO was ~200 days. Reducing from 340→200 would release ~$35B in inventory cash. This is Boeing's actual operational turnaround goal."
+          oninput="onSlider('dio',parseFloat(this.value),'days')">
+        <div style="font-family:var(--mono);font-size:7.5px;color:var(--txt-d);margin-top:2px">most powerful lever — try reducing toward 200 (pre-crisis)</div>
+      </div>
+      <div class="si">
+        <div class="sl">DSO (days)<span class="sv" id="sv-dso">14.8</span></div>
+        <input type="range" id="sl-dso" min="5" max="75" step="1" value="14.78"
+          title="Boeing collects quickly on aircraft deliveries (~15 days trade AR). Lower DSO = faster cash collection. Less impactful than DIO given Boeing's small trade AR balance."
+          oninput="onSlider('dso',parseFloat(this.value),'days1')">
+        <div style="font-family:var(--mono);font-size:7.5px;color:var(--txt-d);margin-top:2px">↑ ties up more cash in receivables</div>
+      </div>
+      <div class="si">
+        <div class="sl">DPO (days)<span class="sv" id="sv-dpo">53.4</span></div>
+        <input type="range" id="sl-dpo" min="20" max="90" step="1" value="53.39"
+          title="Paying suppliers later holds cash longer. Increases AP on balance sheet. Helps modestly — limited by supplier relationships and contract terms."
+          oninput="onSlider('dpo',parseFloat(this.value),'days1')">
+        <div style="font-family:var(--mono);font-size:7.5px;color:var(--txt-d);margin-top:2px">↑ delays supplier payments → holds cash longer</div>
+      </div>
+      <div class="si">
+        <div class="sl">CapEx / Sales<span class="sv" id="sv-capex">3.0%</span></div>
+        <input type="range" id="sl-capex" min="1" max="10" step="0.25" value="3.0"
+          title="Direct cash outflow. Reducing CapEx preserves cash but risks under-investment in production capacity. Boeing's historical CapEx was 3-5% of sales."
+          oninput="onSlider('capex',this.value/100,'pct')">
+        <div style="font-family:var(--mono);font-size:7.5px;color:var(--txt-d);margin-top:2px">↑ direct cash outflow each quarter</div>
+      </div>
+    </div>
+    <div class="custom-note">
+      <strong>How this works:</strong> The full 3-statement forecast engine runs in your browser using identical logic
+      to <code>run_three_statement_forecast()</code> in the notebook. Anchor values are Q4-2025 actuals from
+      <em>BA_quarterly_statements.xlsx</em>. Results shown in gold are exploratory — not authoritative outputs.
+      Named scenario charts remain unchanged and trace directly to <code>authoritative_outputs_long.csv</code>.
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="cp"><div id="ch-rev"    style="height:285px"></div></div>
+    <div class="cp"><div id="ch-ebitda" style="height:285px"></div></div>
+  </div>
+  <div class="g2">
+    <div class="cp"><div id="ch-cash"   style="height:285px"></div></div>
+    <div class="cp"><div id="ch-revl"   style="height:285px"></div></div>
+  </div>
+  <div class="g2">
+    <div class="cp full"><div id="ch-cfo" style="height:285px"></div></div>
+  </div>
+
+  <div class="bot">
+    <div class="panel">
+      <div class="ptitle">Scenario Assumptions</div>
+      <div class="albl" id="assump-lbl"></div>
+      <div id="assump-body"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <div class="panel" style="flex:1">
+        <div class="ptitle">Cross-Scenario Summary — 16Q Horizon</div>
+        <table class="comp-tbl">
+          <thead><tr>
+            <th>Metric</th>
+            <th class="col-b">Base</th><th class="col-u">Upside</th>
+            <th class="col-d">Downside</th><th class="col-l">Liq. Stress</th>
+            <th class="col-c" id="cust-hdr" style="display:none">Custom</th>
+          </tr></thead>
+          <tbody id="comp-body"></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <div class="ptitle">Diagnostic Checks — Selected Scenario</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--txt-d);margin-bottom:9px" id="diag-id"></div>
+        <div class="dg" id="diag-grid"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="ftr">
+  <div class="ft">THE BOEING COMPANY · FIN 4453 Capstone · All values USD millions · Named scenarios from authoritative_outputs_long.csv</div>
+  <div class="ft">2026-04-19T11:47:54 · boeing_capstone_combined_v1</div>
+</footer>
+
+<script>
+/* ── Embedded data ───────────────────────────────────────────────────────── */
+const KPI_DATA    = {
+  "base": {
+    "final_revenue": "+$29.0B",
+    "final_ebitda": "+$0.1B",
+    "ebitda_margin": "0.5%",
+    "final_cash": "-$9.6B",
+    "min_cash": "-$9.6B",
+    "peak_revolver": "+$15.0B",
+    "cumul_cfo": "-$13.7B",
+    "cumul_fcff": "-$13.2B",
+    "cumul_ni": "-$20.2B",
+    "final_debt": "+$60.6B",
+    "diagnostic_status": "WARN"
+  },
+  "upside": {
+    "final_revenue": "+$39.8B",
+    "final_ebitda": "+$2.0B",
+    "ebitda_margin": "5.0%",
+    "final_cash": "-$4.0B",
+    "min_cash": "-$4.0B",
+    "peak_revolver": "+$15.0B",
+    "cumul_cfo": "-$0.3B",
+    "cumul_fcff": "-$13.2B",
+    "cumul_ni": "+$1.6B",
+    "final_debt": "+$60.6B",
+    "diagnostic_status": "WARN"
+  },
+  "downside": {
+    "final_revenue": "+$18.8B",
+    "final_ebitda": "-$1.0B",
+    "ebitda_margin": "-5.5%",
+    "final_cash": "-$9.7B",
+    "min_cash": "-$9.7B",
+    "peak_revolver": "+$15.0B",
+    "cumul_cfo": "-$19.9B",
+    "cumul_fcff": "-$5.6B",
+    "cumul_ni": "-$42.3B",
+    "final_debt": "+$60.6B",
+    "diagnostic_status": "WARN"
+  },
+  "liquidity_stress": {
+    "final_revenue": "+$14.8B",
+    "final_ebitda": "-$1.9B",
+    "ebitda_margin": "-13.0%",
+    "final_cash": "-$29.7B",
+    "min_cash": "-$29.7B",
+    "peak_revolver": "+$15.0B",
+    "cumul_cfo": "-$37.7B",
+    "cumul_fcff": "-$17.3B",
+    "cumul_ni": "-$66.2B",
+    "final_debt": "+$60.6B",
+    "diagnostic_status": "WARN"
+  }
+};
+const ASSUMP_DISP = {
+  "base": {
+    "Volume Growth (q/q)": "1.2%",
+    "Price Growth (q/q)": "0.0%",
+    "Gross Margin": "8.0%",
+    "OpEx Ratio": "7.5%",
+    "DSO (days)": "14.8",
+    "DIO (days)": "340.0",
+    "DPO (days)": "53.4",
+    "CapEx / Sales": "3.2%",
+    "Borrowing Spread": "1.2%",
+    "Cash Floor": "$0M",
+    "Revolver Limit": "$15,000M"
+  },
+  "upside": {
+    "Volume Growth (q/q)": "2.2%",
+    "Price Growth (q/q)": "1.0%",
+    "Gross Margin": "12.0%",
+    "OpEx Ratio": "7.0%",
+    "DSO (days)": "11.8",
+    "DIO (days)": "300.0",
+    "DPO (days)": "56.4",
+    "CapEx / Sales": "4.2%",
+    "Borrowing Spread": "1.0%",
+    "Cash Floor": "$0M",
+    "Revolver Limit": "$15,000M"
+  },
+  "downside": {
+    "Volume Growth (q/q)": "-0.5%",
+    "Price Growth (q/q)": "-1.0%",
+    "Gross Margin": "3.0%",
+    "OpEx Ratio": "8.5%",
+    "DSO (days)": "22.8",
+    "DIO (days)": "380.0",
+    "DPO (days)": "48.4",
+    "CapEx / Sales": "2.2%",
+    "Borrowing Spread": "2.2%",
+    "Cash Floor": "$0M",
+    "Revolver Limit": "$15,000M"
+  },
+  "liquidity_stress": {
+    "Volume Growth (q/q)": "-1.5%",
+    "Price Growth (q/q)": "-1.5%",
+    "Gross Margin": "-3.0%",
+    "OpEx Ratio": "10.0%",
+    "DSO (days)": "29.8",
+    "DIO (days)": "410.0",
+    "DPO (days)": "45.4",
+    "CapEx / Sales": "3.2%",
+    "Borrowing Spread": "3.2%",
+    "Cash Floor": "$5,000M",
+    "Revolver Limit": "$15,000M"
+  }
+};
+const ASSUMP_RAW  = {
+  "base": {
+    "volume_growth": 0.012,
+    "price_growth": 0.0,
+    "gross_margin": 0.08,
+    "opex_ratio": 0.075,
+    "dso": 14.776360909263207,
+    "dio": 340.0,
+    "dpo": 53.38901209530982,
+    "capex_to_sales": 0.0316066053406973,
+    "borrowing_spread_annual": 0.0122921328776066,
+    "cash_floor": 0.0,
+    "revolver_limit": 15000.0
+  },
+  "upside": {
+    "volume_growth": 0.022,
+    "price_growth": 0.01,
+    "gross_margin": 0.12,
+    "opex_ratio": 0.07,
+    "dso": 11.776360909263207,
+    "dio": 300.0,
+    "dpo": 56.38901209530982,
+    "capex_to_sales": 0.0416066053406973,
+    "borrowing_spread_annual": 0.0097921328776066,
+    "cash_floor": 0.0,
+    "revolver_limit": 15000.0
+  },
+  "downside": {
+    "volume_growth": -0.005,
+    "price_growth": -0.01,
+    "gross_margin": 0.03,
+    "opex_ratio": 0.085,
+    "dso": 22.776360909263207,
+    "dio": 380.0,
+    "dpo": 48.38901209530982,
+    "capex_to_sales": 0.0216066053406973,
+    "borrowing_spread_annual": 0.0222921328776066,
+    "cash_floor": 0.0,
+    "revolver_limit": 15000.0
+  },
+  "liquidity_stress": {
+    "volume_growth": -0.015,
+    "price_growth": -0.015,
+    "gross_margin": -0.03,
+    "opex_ratio": 0.1,
+    "dso": 29.776360909263207,
+    "dio": 410.0,
+    "dpo": 45.38901209530982,
+    "capex_to_sales": 0.0316066053406973,
+    "borrowing_spread_annual": 0.0322921328776066,
+    "cash_floor": 5000.0,
+    "revolver_limit": 15000.0
+  }
+};
+const DIAG_STATUS = {
+  "base": {
+    "status": "WARN",
+    "hard_pass": true,
+    "cash_floor": false,
+    "soft_warn": false,
+    "run_id": "base_boeing_capstone_combined_v1"
+  },
+  "upside": {
+    "status": "WARN",
+    "hard_pass": true,
+    "cash_floor": false,
+    "soft_warn": false,
+    "run_id": "upside_boeing_capstone_combined_v1"
+  },
+  "downside": {
+    "status": "WARN",
+    "hard_pass": true,
+    "cash_floor": false,
+    "soft_warn": true,
+    "run_id": "downside_boeing_capstone_combined_v1"
+  },
+  "liquidity_stress": {
+    "status": "WARN",
+    "hard_pass": true,
+    "cash_floor": false,
+    "soft_warn": true,
+    "run_id": "liquidity_stress_boeing_capstone_combined_v1"
+  }
+};
+const DIAG_CHECKS = {
+  "base": {
+    "IndexSortedUnique": "True",
+    "CashRoll_OK": "True",
+    "BS_Tie_OK_Within_500": "True",
+    "Inventory_NonNegative": "True",
+    "Revolver_Within_Limit": "True",
+    "CashFloor_Met": "False",
+    "Soft_NearZero_or_Negative_EBITDA": "False",
+    "Max_BS_Residual": "2.546585164964199e-11",
+    "Max_Cash_Roll_Residual": "0.0"
+  },
+  "upside": {
+    "IndexSortedUnique": "True",
+    "CashRoll_OK": "True",
+    "BS_Tie_OK_Within_500": "True",
+    "Inventory_NonNegative": "True",
+    "Revolver_Within_Limit": "True",
+    "CashFloor_Met": "False",
+    "Soft_NearZero_or_Negative_EBITDA": "False",
+    "Max_BS_Residual": "2.546585164964199e-11",
+    "Max_Cash_Roll_Residual": "0.0"
+  },
+  "downside": {
+    "IndexSortedUnique": "True",
+    "CashRoll_OK": "True",
+    "BS_Tie_OK_Within_500": "True",
+    "Inventory_NonNegative": "True",
+    "Revolver_Within_Limit": "True",
+    "CashFloor_Met": "False",
+    "Soft_NearZero_or_Negative_EBITDA": "True",
+    "Max_BS_Residual": "3.001332515850663e-11",
+    "Max_Cash_Roll_Residual": "0.0"
+  },
+  "liquidity_stress": {
+    "IndexSortedUnique": "True",
+    "CashRoll_OK": "True",
+    "BS_Tie_OK_Within_500": "True",
+    "Inventory_NonNegative": "True",
+    "Revolver_Within_Limit": "True",
+    "CashFloor_Met": "False",
+    "Soft_NearZero_or_Negative_EBITDA": "True",
+    "Max_BS_Residual": "2.9103830456733704e-11",
+    "Max_Cash_Roll_Residual": "0.0"
+  }
+};
+const ANCHOR      = {
+  "rev": 23948.0,
+  "cash": 10921.0,
+  "ar": 12079.0,
+  "inv": 84679.0,
+  "ap": 13109.0,
+  "ppe": 15602.0,
+  "term_debt": 45637.0,
+  "revolver": 8461.0,
+  "total_assets": 168235.0,
+  "total_liab": 162778.0,
+  "total_eq": 5457.0,
+  "re": 17252.0
+};
+const STATIC_A    = {
+  "dep_rate_q": 0.04,
+  "ref_rate_annual": 0.04,
+  "tax_rate": 0.26,
+  "div_payout": 0.01,
+  "mandatory_amort": 0.0
+};
+const BASE_CA     = {
+  "gm": 0.08,
+  "opex": 0.075,
+  "vol": 0.012,
+  "price": 0.0,
+  "dio": 340.0,
+  "dso": 14.776360909263207,
+  "dpo": 53.38901209530982,
+  "capex": 0.0316066053406973,
+  "borrow": 0.0122921328776066,
+  "floor": 0.0,
+  "rlimit": 15000.0
+};  // exact base assumptions from Python
+const PERIODS     = ["2026-03-31", "2026-06-30", "2026-09-30", "2026-12-31", "2027-03-31", "2027-06-30", "2027-09-30", "2027-12-31", "2028-03-31", "2028-06-30", "2028-09-30", "2028-12-31", "2029-03-31", "2029-06-30", "2029-09-30", "2029-12-31"];
+
+const SCEN_COLORS = {base:'#4fc3f7',upside:'#69f0ae',downside:'#ff7043',liquidity_stress:'#ea80fc',custom:'#ffd700'};
+const SCEN_LABELS = {base:'Base Case',upside:'Upside',downside:'Downside',liquidity_stress:'Liquidity Stress',custom:'Custom'};
+const ALL_SCENS   = ['base','upside','downside','liquidity_stress'];
+const CUST_IDX    = 4;  // custom trace is always 5th (index 4)
+
+const COMP_ROWS = [
+  {label:'Final Qtr Revenue',  key:'final_revenue'},
+  {label:'Final Qtr EBITDA',   key:'final_ebitda'},
+  {label:'Avg EBITDA Margin',  key:'ebitda_margin'},
+  {label:'Ending Cash (16Q)',  key:'final_cash'},
+  {label:'Min Cash (horizon)', key:'min_cash'},
+  {label:'Peak Revolver',      key:'peak_revolver'},
+  {label:'Ending Debt',        key:'final_debt'},
+  {label:'Cumul. CFO (16Q)',   key:'cumul_cfo'},
+  {label:'Cumul. FCFF (16Q)',  key:'cumul_fcff'},
+  {label:'Cumul. Net Income',  key:'cumul_ni'},
+  {label:'Diag. Status',       key:'diagnostic_status'},
+];
+const DIAG_LIST = [
+  {key:'IndexSortedUnique',      label:'Index Sorted & Unique', inv:false},
+  {key:'CashRoll_OK',            label:'Cash Roll-Forward',     inv:false},
+  {key:'BS_Tie_OK_Within_500',   label:'BS Tie (<$500M)',        inv:false},
+  {key:'Inventory_NonNegative',  label:'Inventory ≥ 0',          inv:false},
+  {key:'Revolver_Within_Limit',  label:'Revolver ≤ $15B',        inv:false},
+  {key:'CashFloor_Met',          label:'Cash Floor Met',         inv:false},
+  {key:'hard_pass',              label:'All Hard Checks',        inv:false, src:'diag'},
+  {key:'Soft_NearZero_or_Negative_EBITDA', label:'Neg. EBITDA ⚠', inv:true},
+];
+
+/* ── Chart data ──────────────────────────────────────────────────────────── */
+const chart_rev    = {"data":[{"hovertemplate":"\u003cb\u003eBase Case\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#4fc3f7","width":2.5},"marker":{"color":"#4fc3f7","size":5},"mode":"lines+markers","name":"Base Case","x":["2026-03-31","2026-06-30","2026-09-30","2026-12-31","2027-03-31","2027-06-30","2027-09-30","2027-12-31","2028-03-31","2028-06-30","2028-09-30","2028-12-31","2029-03-31","2029-06-30","2029-09-30","2029-12-31"],"y":[24.235,24.526,24.821,25.118,25.42,25.725,26.034,26.346,26.662,26.982,27.306,27.633,27.965,28.301,28.64,28.984],"type":"scatter"},{"hovertemplate":"\u003cb\u003eUpside\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#69f0ae","width":2.5},"marker":{"color":"#69f0ae","size":5},"mode":"lines+markers","name":"Upside","x":["2026-03-31","2026-06-30","2026-09-30","2026-12-31","2027-03-31","2027-06-30","2027-09-30","2027-12-31","2028-03-31","2028-06-30","2028-09-30","2028-12-31","2029-03-31","2029-06-30","2029-09-30","2029-12-31"],"y":[24.72,25.516,26.338,27.187,28.063,28.967,29.9,30.864,31.858,32.885,33.944,35.038,36.167,37.332,38.535,39.776],"type":"scatter"},{"hovertemplate":"\u003cb\u003eDownside\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#ff7043","width":2.5},"marker":{"color":"#ff7043","size":5},"mode":"lines+markers","name":"Downside","x":["2026-03-31","2026-06-30","2026-09-30","2026-12-31","2027-03-31","2027-06-30","2027-09-30","2027-12-31","2028-03-31","2028-06-30","2028-09-30","2028-12-31","2029-03-31","2029-06-30","2029-09-30","2029-12-31"],"y":[23.59,23.237,22.89,22.548,22.211,21.879,21.551,21.229,20.912,20.599,20.291,19.988,19.689,19.395,19.105,18.819],"type":"scatter"},{"hovertemplate":"\u003cb\u003eLiquidity Stress\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#ea80fc","width":2.5},"marker":{"color":"#ea80fc","size":5},"mode":"lines+markers","name":"Liquidity Stress","x":["2026-03-31","2026-06-30","2026-09-30","2026-12-31","2027-03-31","2027-06-30","2027-09-30","2027-12-31","2028-03-31","2028-06-30","2028-09-30","2028-12-31","2029-03-31","2029-06-30","2029-09-30","2029-12-31"],"y":[23.235,22.543,21.872,21.221,20.589,19.976,19.381,18.804,18.244,17.701,17.174,16.662,16.166,15.685,15.218,14.765],"type":"scatter"},{"hovertemplate":"\u003cb\u003eCustom\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#ffd700","dash":"dot","width":3},"marker":{"color":"#ffd700","size":6},"mode":"lines+markers","name":"Custom","visible":false,"x":[],"y":[],"type":"scatter"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmapgl":[{"type":"heatmapgl","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"font":{"family":"IBM Plex Mono, Courier New, monospace","color":"#c8cdd4","size":10},"margin":{"l":50,"r":16,"t":36,"b":36},"legend":{"font":{"size":9},"bgcolor":"rgba(22,25,29,.92)","bordercolor":"#2e3238","borderwidth":1,"x":0.01,"y":0.99,"xanchor":"left","yanchor":"top"},"xaxis":{"tickfont":{"size":9},"gridcolor":"#2e3238","linecolor":"#2e3238","tickformat":"%b '%y","zeroline":false},"yaxis":{"tickfont":{"size":9},"gridcolor":"#2e3238","linecolor":"#2e3238","zeroline":true,"zerolinecolor":"#3d4349","zerolinewidth":1,"title":{"text":"$B"}},"title":{"font":{"size":11,"family":"Barlow Semi Condensed, Helvetica Neue, sans-serif","color":"#f0f2f5"},"text":"Quarterly Revenue ($B) \u2014 16-Quarter Horizon","x":0.02},"paper_bgcolor":"rgba(0,0,0,0)","plot_bgcolor":"rgba(0,0,0,0)","hovermode":"x unified","height":285}};
+const chart_hm_cash= {"data":[{"colorbar":{"tickfont":{"color":"#c8cdd4","family":"IBM Plex Mono, Courier New, monospace","size":9},"ticksuffix":"B","title":{"font":{"color":"#c8cdd4","family":"IBM Plex Mono, Courier New, monospace","size":9},"text":"$B"}},"colorscale":[[0.0,"#7b0000"],[0.2,"#c62828"],[0.38,"#ef5350"],[0.47,"#ef9a9a"],[0.5,"#888888"],[0.6,"#a5d6a7"],[0.75,"#43a047"],[0.9,"#1b5e20"],[1.0,"#0d3b0d"]],"hovertemplate":"Price: %{x}\u003cbr\u003eVolume: %{y}\u003cbr\u003e%{text}\u003cextra\u003e\u003c\u002fextra\u003e","text":[["$-171.8B","$-259.0B","$-375.0B"],["$-64.9B","$-113.9B","$-178.8B"],["$-2.0B","$-29.7B","$-65.6B"]],"textfont":{"color":"white","family":"IBM Plex Mono, Courier New, monospace","size":12},"texttemplate":"%{text}","x":["-2% price","+0% price","+2% price"],"y":["+4% vol","+0% vol","-4% vol"],"z":[[-171.7982080986527,-259.00935471756895,-375.02232471493153],[-64.88196637851784,-113.9010246684577,-178.80813774703688],[-2.006109103027157,-29.72323184006843,-65.63678776350379]],"type":"heatmap"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmapgl":[{"type":"heatmapgl","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"font":{"family":"IBM Plex Mono, Courier New, monospace","color":"#c8cdd4","size":10},"title":{"font":{"size":11,"family":"Barlow Semi Condensed, Helvetica Neue, sans-serif","color":"#f0f2f5"},"text":"Ending Cash ($B) \u2014 16Q Horizon","x":0.02},"margin":{"l":90,"r":16,"t":44,"b":60},"xaxis":{"tickfont":{"size":10},"title":{"text":"Price Shock (quarterly)"},"gridcolor":"rgba(0,0,0,0)","linecolor":"rgba(0,0,0,0)","zeroline":false},"yaxis":{"tickfont":{"size":10},"title":{"text":"Volume Shock (quarterly)"},"gridcolor":"rgba(0,0,0,0)","linecolor":"rgba(0,0,0,0)","zeroline":false},"paper_bgcolor":"rgba(0,0,0,0)","plot_bgcolor":"rgba(0,0,0,0)","height":340,"hovermode":"closest"}};
+const chart_ebitda = {"data":[{"hovertemplate":"\u003cb\u003eBase Case\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#4fc3f7","width":2.5},"marker":{"color":"#4fc3f7","size":5},"mode":"lines+markers","name":"Base Case","x":["2026-03-31","2026-06-30","2026-09-30","2026-12-31","2027-03-31","2027-06-30","2027-09-30","2027-12-31","2028-03-31","2028-06-30","2028-09-30","2028-12-31","2029-03-31","2029-06-30","2029-09-30","2029-12-31"],"y":[0.121,0.123,0.124,0.126,0.127,0.129,0.13,0.132,0.133,0.135,0.137,0.138,0.14,0.142,0.143,0.145],"type":"scatter"},{"hovertemplate":"\u003cb\u003eUpside\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#69f0ae","width":2.5},"marker":{"color":"#69f0ae","size":5},"mode":"lines+markers","name":"Upside","x":["2026-03-31","2026-06-30","2026-09-30","2026-12-31","2027-03-31","2027-06-30","2027-09-30","2027-12-31","2028-03-31","2028-06-30","2028-09-30","2028-12-31","2029-03-31","2029-06-30","2029-09-30","2029-12-31"],"y":[1.236,1.276,1.317,1.359,1.403,1.448,1.495,1.543,1.593,1.644,1.697,1.752,1.808,1.867,1.927,1.989],"type":"scatter"},{"hovertemplate":"\u003cb\u003eDownside\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#ff7043","width":2.5},"marker":{"color":"#ff7043","size":5},"mode":"lines+markers","name":"Downside","x":["2026-03-31","2026-06-30","2026-09-30","2026-12-31","2027-03-31","2027-06-30","2027-09-30","2027-12-31","2028-03-31","2028-06-30","2028-09-30","2028-12-31","2029-03-31","2029-06-30","2029-09-30","2029-12-31"],"y":[-1.297,-1.278,-1.259,-1.24,-1.222,-1.203,-1.185,-1.168,-1.15,-1.133,-1.116,-1.099,-1.083,-1.067,-1.051,-1.035],"type":"scatter"},{"hovertemplate":"\u003cb\u003eLiquidity Stress\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#ea80fc","width":2.5},"marker":{"color":"#ea80fc","size":5},"mode":"lines+markers","name":"Liquidity Stress","x":["2026-03-31","2026-06-30","2026-09-30","2026-12-31","2027-03-31","2027-06-30","2027-09-30","2027-12-31","2028-03-31","2028-06-30","2028-09-30","2028-12-31","2029-03-31","2029-06-30","2029-09-30","2029-12-31"],"y":[-3.021,-2.931,-2.843,-2.759,-2.677,-2.597,-2.52,-2.445,-2.372,-2.301,-2.233,-2.166,-2.102,-2.039,-1.978,-1.919],"type":"scatter"},{"hovertemplate":"\u003cb\u003eCustom\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#ffd700","dash":"dot","width":3},"marker":{"color":"#ffd700","size":6},"mode":"lines+markers","name":"Custom","visible":false,"x":[],"y":[],"type":"scatter"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmapgl":[{"type":"heatmapgl","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"font":{"family":"IBM Plex Mono, Courier New, monospace","color":"#c8cdd4","size":10},"margin":{"l":50,"r":16,"t":36,"b":36},"legend":{"font":{"size":9},"bgcolor":"rgba(22,25,29,.92)","bordercolor":"#2e3238","borderwidth":1,"x":0.01,"y":0.99,"xanchor":"left","yanchor":"top"},"xaxis":{"tickfont":{"size":9},"gridcolor":"#2e3238","linecolor":"#2e3238","tickformat":"%b '%y","zeroline":false},"yaxis":{"tickfont":{"size":9},"gridcolor":"#2e3238","linecolor":"#2e3238","zeroline":true,"zerolinecolor":"#3d4349","zerolinewidth":1,"title":{"text":"$B"}},"title":{"font":{"size":11,"family":"Barlow Semi Condensed, Helvetica Neue, sans-serif","color":"#f0f2f5"},"text":"Quarterly EBITDA ($B) \u2014 Scenario Comparison","x":0.02},"paper_bgcolor":"rgba(0,0,0,0)","plot_bgcolor":"rgba(0,0,0,0)","hovermode":"x unified","height":285,"shapes":[{"line":{"color":"#ff4444","dash":"dot","width":1.2},"opacity":0.7,"type":"line","x0":0,"x1":1,"xref":"x domain","y0":0,"y1":0,"yref":"y"}]}};
+const chart_cash   = {"data":[{"hovertemplate":"\u003cb\u003eBase Case\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#4fc3f7","width":2.5},"marker":{"color":"#4fc3f7","size":5},"mode":"lines+markers","name":"Base Case","x":["2026-03-31","2026-03-31","2026-06-30","2026-06-30","2026-09-30","2026-09-30","2026-12-31","2026-12-31","2027-03-31","2027-03-31","2027-06-30","2027-06-30","2027-09-30","2027-09-30","2027-12-31","2027-12-31","2028-03-31","2028-03-31","2028-06-30","2028-06-30","2028-09-30","2028-09-30","2028-12-31","2028-12-31","2029-03-31","2029-03-31","2029-06-30","2029-06-30","2029-09-30","2029-09-30","2029-12-31","2029-12-31"],"y":[19.058,19.058,16.808,16.808,15.366,15.366,13.089,13.089,9.083,9.083,7.622,7.622,6.144,6.144,3.79,3.79,0.53,0.53,0.0,0.0,0.0,0.0,0.0,0.0,-3.768,-3.768,-5.39,-5.39,-7.031,-7.031,-9.635,-9.635],"type":"scatter"},{"hovertemplate":"\u003cb\u003eUpside\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#69f0ae","width":2.5},"marker":{"color":"#69f0ae","size":5},"mode":"lines+markers","name":"Upside","x":["2026-03-31","2026-03-31","2026-06-30","2026-06-30","2026-09-30","2026-09-30","2026-12-31","2026-12-31","2027-03-31","2027-03-31","2027-06-30","2027-06-30","2027-09-30","2027-09-30","2027-12-31","2027-12-31","2028-03-31","2028-03-31","2028-06-30","2028-06-30","2028-09-30","2028-09-30","2028-12-31","2028-12-31","2029-03-31","2029-03-31","2029-06-30","2029-06-30","2029-09-30","2029-09-30","2029-12-31","2029-12-31"],"y":[32.671,32.671,30.232,30.232,28.448,28.448,25.911,25.911,21.775,21.775,19.854,19.854,17.894,17.894,15.078,15.078,11.326,11.326,8.329,8.329,6.168,6.168,3.036,3.036,0.0,0.0,0.0,0.0,-0.408,-0.408,-3.959,-3.959],"type":"scatter"},{"hovertemplate":"\u003cb\u003eDownside\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#ff7043","width":2.5},"marker":{"color":"#ff7043","size":5},"mode":"lines+markers","name":"Downside","x":["2026-03-31","2026-03-31","2026-06-30","2026-06-30","2026-09-30","2026-09-30","2026-12-31","2026-12-31","2027-03-31","2027-03-31","2027-06-30","2027-06-30","2027-09-30","2027-09-30","2027-12-31","2027-12-31","2028-03-31","2028-03-31","2028-06-30","2028-06-30","2028-09-30","2028-09-30","2028-12-31","2028-12-31","2029-03-31","2029-03-31","2029-06-30","2029-06-30","2029-09-30","2029-09-30","2029-12-31","2029-12-31"],"y":[2.631,2.631,1.344,1.344,1.004,1.004,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,-1.22,-1.22,-2.559,-2.559,-3.057,-3.057,-4.397,-4.397,-7.369,-7.369,-7.857,-7.857,-8.381,-8.381,-9.698,-9.698],"type":"scatter"},{"hovertemplate":"\u003cb\u003eLiquidity Stress\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#ea80fc","width":2.5},"marker":{"color":"#ea80fc","size":5},"mode":"lines+markers","name":"Liquidity Stress","x":["2026-03-31","2026-03-31","2026-06-30","2026-06-30","2026-09-30","2026-09-30","2026-12-31","2026-12-31","2027-03-31","2027-03-31","2027-06-30","2027-06-30","2027-09-30","2027-09-30","2027-12-31","2027-12-31","2028-03-31","2028-03-31","2028-06-30","2028-06-30","2028-09-30","2028-09-30","2028-12-31","2028-12-31","2029-03-31","2029-03-31","2029-06-30","2029-06-30","2029-09-30","2029-09-30","2029-12-31","2029-12-31"],"y":[-7.115,-7.115,-8.773,-8.773,-9.355,-9.355,-11.011,-11.011,-14.666,-14.666,-15.241,-15.241,-15.881,-15.881,-17.473,-17.473,-19.934,-19.934,-21.471,-21.471,-22.163,-22.163,-23.699,-23.699,-26.805,-26.805,-27.491,-27.491,-28.23,-28.23,-29.715,-29.715],"type":"scatter"},{"hovertemplate":"\u003cb\u003eCustom\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#ffd700","dash":"dot","width":3},"marker":{"color":"#ffd700","size":6},"mode":"lines+markers","name":"Custom","visible":false,"x":[],"y":[],"type":"scatter"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmapgl":[{"type":"heatmapgl","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"font":{"family":"IBM Plex Mono, Courier New, monospace","color":"#c8cdd4","size":10},"margin":{"l":50,"r":16,"t":36,"b":36},"legend":{"font":{"size":9},"bgcolor":"rgba(22,25,29,.92)","bordercolor":"#2e3238","borderwidth":1,"x":0.01,"y":0.99,"xanchor":"left","yanchor":"top"},"xaxis":{"tickfont":{"size":9},"gridcolor":"#2e3238","linecolor":"#2e3238","tickformat":"%b '%y","zeroline":false},"yaxis":{"tickfont":{"size":9},"gridcolor":"#2e3238","linecolor":"#2e3238","zeroline":true,"zerolinecolor":"#3d4349","zerolinewidth":1,"title":{"text":"$B"}},"title":{"font":{"size":11,"family":"Barlow Semi Condensed, Helvetica Neue, sans-serif","color":"#f0f2f5"},"text":"Ending Cash Balance ($B) \u2014 Revolver Exhaustion View","x":0.02},"paper_bgcolor":"rgba(0,0,0,0)","plot_bgcolor":"rgba(0,0,0,0)","hovermode":"x unified","height":285,"shapes":[{"line":{"color":"#ff4444","dash":"dot","width":1.2},"opacity":0.7,"type":"line","x0":0,"x1":1,"xref":"x domain","y0":0,"y1":0,"yref":"y"}]}};
+const chart_revl   = {"data":[{"hovertemplate":"\u003cb\u003eBase Case\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#4fc3f7","width":2.5},"marker":{"color":"#4fc3f7","size":5},"mode":"lines+markers","name":"Base Case","x":["2026-03-31","2026-06-30","2026-09-30","2026-12-31","2027-03-31","2027-06-30","2027-09-30","2027-12-31","2028-03-31","2028-06-30","2028-09-30","2028-12-31","2029-03-31","2029-06-30","2029-09-30","2029-12-31"],"y":[8.461,8.461,8.461,8.461,8.461,8.461,8.461,8.461,8.461,10.336,11.876,14.355,15.0,15.0,15.0,15.0],"type":"scatter"},{"hovertemplate":"\u003cb\u003eUpside\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#69f0ae","width":2.5},"marker":{"color":"#69f0ae","size":5},"mode":"lines+markers","name":"Upside","x":["2026-03-31","2026-06-30","2026-09-30","2026-12-31","2027-03-31","2027-06-30","2027-09-30","2027-12-31","2028-03-31","2028-06-30","2028-09-30","2028-12-31","2029-03-31","2029-06-30","2029-09-30","2029-12-31"],"y":[8.461,8.461,8.461,8.461,8.461,8.461,8.461,8.461,8.461,8.461,8.461,8.461,10.619,12.978,15.0,15.0],"type":"scatter"},{"hovertemplate":"\u003cb\u003eDownside\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#ff7043","width":2.5},"marker":{"color":"#ff7043","size":5},"mode":"lines+markers","name":"Downside","x":["2026-03-31","2026-06-30","2026-09-30","2026-12-31","2027-03-31","2027-06-30","2027-09-30","2027-12-31","2028-03-31","2028-06-30","2028-09-30","2028-12-31","2029-03-31","2029-06-30","2029-09-30","2029-12-31"],"y":[8.461,8.461,8.461,8.745,11.88,12.26,12.688,14.017,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0],"type":"scatter"},{"hovertemplate":"\u003cb\u003eLiquidity Stress\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#ea80fc","width":2.5},"marker":{"color":"#ea80fc","size":5},"mode":"lines+markers","name":"Liquidity Stress","x":["2026-03-31","2026-06-30","2026-09-30","2026-12-31","2027-03-31","2027-06-30","2027-09-30","2027-12-31","2028-03-31","2028-06-30","2028-09-30","2028-12-31","2029-03-31","2029-06-30","2029-09-30","2029-12-31"],"y":[15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0,15.0],"type":"scatter"},{"hovertemplate":"\u003cb\u003eCustom\u003c\u002fb\u003e\u003cbr\u003e%{x}\u003cbr\u003e%{y:.2f}B\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#ffd700","dash":"dot","width":3},"marker":{"color":"#ffd700","size":6},"mode":"lines+markers","name":"Custom","visible":false,"x":[],"y":[],"type":"scatter"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmapgl":[{"type":"heatmapgl","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"font":{"family":"IBM Plex Mono, Courier New, monospace","color":"#c8cdd4","size":10},"margin":{"l":50,"r":16,"t":36,"b":36},"legend":{"font":{"size":9},"bgcolor":"rgba(22,25,29,.92)","bordercolor":"#2e3238","borderwidth":1,"x":0.01,"y":0.99,"xanchor":"left","yanchor":"top"},"xaxis":{"tickfont":{"size":9},"gridcolor":"#2e3238","linecolor":"#2e3238","tickformat":"%b '%y","zeroline":false},"yaxis":{"tickfont":{"size":9},"gridcolor":"#2e3238","linecolor":"#2e3238","zeroline":true,"zerolinecolor":"#3d4349","zerolinewidth":1,"title":{"text":"$B"}},"title":{"font":{"size":11,"family":"Barlow Semi Condensed, Helvetica Neue, sans-serif","color":"#f0f2f5"},"text":"Revolver Balance ($B) \u2014 Liquidity Monitor","x":0.02},"paper_bgcolor":"rgba(0,0,0,0)","plot_bgcolor":"rgba(0,0,0,0)","hovermode":"x unified","height":285,"shapes":[{"line":{"color":"#ffd700","dash":"dash","width":1.5},"type":"line","x0":0,"x1":1,"xref":"x domain","y0":15.0,"y1":15.0,"yref":"y"}],"annotations":[{"font":{"color":"#ffd700","size":9},"showarrow":false,"text":"$15B Limit","x":1,"xanchor":"right","xref":"x domain","y":15.0,"yanchor":"bottom","yref":"y"}]}};
+const chart_cfo    = {"data":[{"marker":{"color":["#4fc3f7","#69f0ae","#ff7043","#ea80fc"]},"name":"Cumul. CFO","opacity":0.9,"text":["$-13.7B","$-0.3B","$-19.9B","$-37.7B"],"textfont":{"color":"#c8cdd4","family":"IBM Plex Mono, Courier New, monospace","size":9},"textposition":"outside","x":["Base Case","Upside","Downside","Liquidity Stress"],"y":[-13.67,-0.3,-19.86,-37.72],"type":"bar"},{"marker":{"color":"#ff4444"},"name":"Cumul. CapEx (out)","opacity":0.7,"text":["$-13.4B","$-21.1B","$-7.3B","$-9.5B"],"textfont":{"color":"#ff6666","family":"IBM Plex Mono, Courier New, monospace","size":9},"textposition":"outside","x":["Base Case","Upside","Downside","Liquidity Stress"],"y":[-13.42,-21.1,-7.3,-9.46],"type":"bar"},{"marker":{"color":"#ffd700"},"name":"Cumul. FCFF","opacity":0.85,"text":["$-13.2B","$-13.2B","$-5.6B","$-17.3B"],"textfont":{"color":"#ffd700","family":"IBM Plex Mono, Courier New, monospace","size":9},"textposition":"outside","x":["Base Case","Upside","Downside","Liquidity Stress"],"y":[-13.2,-13.24,-5.56,-17.26],"type":"bar"}],"layout":{"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmapgl":[{"type":"heatmapgl","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"font":{"family":"IBM Plex Mono, Courier New, monospace","color":"#c8cdd4","size":10},"margin":{"l":50,"r":16,"t":36,"b":36},"legend":{"font":{"size":9},"bgcolor":"rgba(22,25,29,.92)","bordercolor":"#2e3238","borderwidth":1,"x":0.01,"y":0.99,"xanchor":"left","yanchor":"top"},"xaxis":{"tickfont":{"size":9},"gridcolor":"#2e3238","linecolor":"#2e3238","tickformat":"%b '%y","zeroline":false},"yaxis":{"tickfont":{"size":9},"gridcolor":"#2e3238","linecolor":"#2e3238","zeroline":true,"zerolinecolor":"#3d4349","zerolinewidth":1,"title":{"text":"$B"}},"title":{"font":{"size":11,"family":"Barlow Semi Condensed, Helvetica Neue, sans-serif","color":"#f0f2f5"},"text":"Cumulative Cash Flow Metrics ($B) \u2014 16Q Horizon","x":0.02},"paper_bgcolor":"rgba(0,0,0,0)","plot_bgcolor":"rgba(0,0,0,0)","hovermode":"x unified","barmode":"group","bargap":0.25,"bargroupgap":0.08,"height":285,"shapes":[{"line":{"color":"#ff4444","dash":"dot","width":1},"opacity":0.6,"type":"line","x0":0,"x1":1,"xref":"x domain","y0":0,"y1":0,"yref":"y"}]}};
+const CFG = {responsive:true,displayModeBar:true,displaylogo:false,
+  modeBarButtonsToRemove:['select2d','lasso2d','autoScale2d']};
+
+/* ── Custom scenario state ───────────────────────────────────────────────── */
+let CA = {};        // populated entirely from ASSUMP_RAW.base via initCA()
+let customKPI = null;
+
+// initCA() is the SINGLE source of truth for custom assumptions.
+// Called at boot AND by resetCustom() so both paths are identical.
+function initCA() {
+  // Copy BASE_CA which was computed in Python from the exact same
+  // scenario_registry.csv row that generated the named base scenario.
+  // This guarantees custom reset-to-base == named base, always.
+  CA = Object.assign({}, BASE_CA);
+}
+
+/* ── JS Forecast Engine ──────────────────────────────────────────────────── */
+// Day counts match Python's forecast_days() exactly so JS == Python numerically.
+const DAYS_Q = [91,91,92,92,90,91,92,92,91,91,92,92,90,91,92,92];
+function runForecast(a) {
+  const N=16;
+  const cc = ANCHOR.total_eq - ANCHOR.re;
+  const oa = Math.max(ANCHOR.total_assets-(ANCHOR.cash+ANCHOR.ar+ANCHOR.inv+ANCHOR.ppe),0);
+  const ol = Math.max(ANCHOR.total_liab -(ANCHOR.ap+ANCHOR.term_debt+ANCHOR.revolver),0);
+  let rp=ANCHOR.rev,cash=ANCHOR.cash,ar=ANCHOR.ar,inv=ANCHOR.inv,ap=ANCHOR.ap;
+  let ppe=ANCHOR.ppe,term=ANCHOR.term_debt,revl=ANCHOR.revolver,re=ANCHOR.re;
+  const rows=[];
+  for(let q=0;q<N;q++){
+    const rev =rp*(1+a.vol)*(1+a.price);
+    const cogs=rev*(1-a.gm);
+    const ebitda=rev*(a.gm-a.opex);
+    const dep=STATIC_A.dep_rate_q*ppe;
+    const ebit=ebitda-dep;
+    const interest=((STATIC_A.ref_rate_annual+a.borrow)/4)*(term+revl);
+    const ebt=ebit-interest;
+    const tax=Math.max(ebt,0)*STATIC_A.tax_rate;
+    const ni=ebt-tax;
+    const div=Math.max(ni,0)*STATIC_A.div_payout;
+    const Q=DAYS_Q[q];
+    const rpd=rev/Q,cpd=cogs/Q;
+    const ar_e=rpd*a.dso,inv_e=cpd*a.dio,ap_e=cpd*a.dpo;
+    const d_ar=ar_e-ar,d_inv=inv_e-inv,d_ap=ap_e-ap;
+    const cfo=ni+dep-d_ar-d_inv+d_ap;
+    const capex=Math.max(a.capex*rev,0);
+    const cfi=-capex;
+    const mand=Math.min(STATIC_A.mandatory_amort,term);
+    const cff_b=-mand-div;
+    const cp=cash+cfo+cfi+cff_b;
+    let draw=0,revl_e=revl,cash_e=cp;
+    if(cp<a.floor){draw=Math.min(a.floor-cp,Math.max(a.rlimit-revl,0));cash_e=cp+draw;revl_e=revl+draw;}
+    const term_e=term-mand,ppe_e=ppe+capex-dep,re_e=re+ni-div;
+    const ta=cash_e+ar_e+inv_e+ppe_e+oa,tl=ap_e+term_e+revl_e+ol,te=cc+re_e;
+    const bsr=ta-tl-te;
+    const dowc=(ar_e+inv_e-ap_e)-(ar+inv-ap);
+    const fcff=ebit*(1-STATIC_A.tax_rate)+dep-capex-dowc;
+    const icr=interest>0?ebitda/interest:null;
+    rows.push({period:PERIODS[q],rev,cogs,ebitda,ebit,ni,interest,cfo,capex,inv_e,
+      cash_e,revl_e,term_e,ta,tl,te,bsr,fcff,draw,em:rev>0?ebitda/rev:0,icr});
+    rp=rev;cash=cash_e;ar=ar_e;inv=inv_e;ap=ap_e;ppe=ppe_e;term=term_e;revl=revl_e;re=re_e;
+  }
+  return rows;
+}
+
+function fmtBn(v,d=1){if(v==null||isNaN(v))return'N/A';const b=v/1000,s=b>0?'+':b<0?'-':'';return s+'$'+Math.abs(b).toFixed(d)+'B';}
+function fmtPct(v){return v==null?'N/A':(v*100).toFixed(1)+'%';}
+
+function calcCustomKPI(rows){
+  const last=rows[rows.length-1];
+  const cfo_sum=rows.reduce((s,r)=>s+r.cfo,0);
+  const fcff_sum=rows.reduce((s,r)=>s+r.fcff,0);
+  const ni_sum=rows.reduce((s,r)=>s+r.ni,0);
+  const avg_em=rows.reduce((s,r)=>s+r.em,0)/rows.length;
+  const min_cash=Math.min(...rows.map(r=>r.cash_e));
+  const peak_revl=Math.max(...rows.map(r=>r.revl_e));
+  const bs_max=Math.max(...rows.map(r=>Math.abs(r.bsr)));
+  const cash_ok=rows.every(r=>r.cash_e>=CA.floor-1e-6);
+  const revl_ok=rows.every(r=>r.revl_e<=CA.rlimit+1e-6);
+  const neg_eb=rows.some(r=>r.ebitda<=1);
+  // Interest coverage: EBITDA / quarterly interest expense
+  // Boeing carries ~$54B debt at ~5% → $675M/quarter interest burden.
+  // ICR < 1.0x means operations cannot cover interest — the key Boeing constraint.
+  const icr_vals=rows.filter(r=>r.interest>0).map(r=>r.icr);
+  const min_icr=icr_vals.length?Math.min(...icr_vals):null;
+  const avg_icr=icr_vals.length?icr_vals.reduce((s,v)=>s+v,0)/icr_vals.length:null;
+  const icr_ok=min_icr!=null&&min_icr>=1.0;   // hard: covers interest every quarter
+  const icr_warn=min_icr!=null&&min_icr>=0.5;  // soft: at least 50% coverage
+  // Python: hard_pass = revolver_ok + BS_tie + inventory_ok (CashFloor_Met is SEPARATE)
+  // PASS = hard_pass AND cash_floor_met AND NOT soft_warning
+  // WARN = hard_pass only
+  // FAIL = NOT hard_pass
+  const inv_ok=rows.every(r=>r.inv_e>=0);
+  const hp=revl_ok&&bs_max<=500&&inv_ok;  // mechanical integrity — matches Python
+  // Economic FAIL: min cash < negative one full revolver limit
+  // Means company exhausted all credit AND still needs more — genuine insolvency signal
+  const economic_fail = min_cash < -CA.rlimit;
+  const st = hp && cash_ok && !neg_eb ? 'PASS'
+           : hp && !economic_fail      ? 'WARN'
+           : 'FAIL';
+  const min_icr_str=min_icr!=null?min_icr.toFixed(2)+'x':'N/A';
+  const avg_icr_str=avg_icr!=null?avg_icr.toFixed(2)+'x':'N/A';
+  return{final_revenue:fmtBn(last.rev),final_ebitda:fmtBn(last.ebitda),ebitda_margin:fmtPct(avg_em),
+    final_cash:fmtBn(last.cash_e),min_cash:fmtBn(min_cash),peak_revolver:fmtBn(peak_revl),
+    final_debt:fmtBn(last.term_e+last.revl_e),cumul_cfo:fmtBn(cfo_sum),cumul_fcff:fmtBn(fcff_sum),
+    cumul_ni:fmtBn(ni_sum),diagnostic_status:st,hard_pass:hp,cash_ok,revl_ok,neg_eb,bs_max,
+    icr_ok,icr_warn,min_icr,avg_icr,min_icr_str,avg_icr_str,rows};
+}
+
+/* ── Charts ──────────────────────────────────────────────────────────────── */
+const LINE_IDS=['ch-rev','ch-ebitda','ch-cash','ch-revl'];
+const LINE_KEYS=['rev','ebitda','cash_e','revl_e'];
+
+function initCharts(){
+  Plotly.newPlot('ch-rev',    chart_rev.data,    chart_rev.layout,    CFG);
+  Plotly.newPlot('ch-ebitda', chart_ebitda.data, chart_ebitda.layout, CFG);
+  Plotly.newPlot('ch-cash',   chart_cash.data,   chart_cash.layout,   CFG);
+  Plotly.newPlot('ch-revl',   chart_revl.data,   chart_revl.layout,   CFG);
+  Plotly.newPlot('ch-cfo',    chart_cfo.data,    chart_cfo.layout,    CFG);
+}
+
+function updateCustomTraces(rows,visible){
+  const xs=rows.map(r=>r.period);
+  LINE_IDS.forEach((id,i)=>{
+    Plotly.restyle(id,{x:[xs],y:[rows.map(r=>r[LINE_KEYS[i]]/1000)],visible},[CUST_IDX]);
+  Plotly.newPlot('ch-hm-cash',chart_hm_cash.data,chart_hm_cash.layout,CFG);
+  });
+}
+
+function hideCustom(){LINE_IDS.forEach(id=>Plotly.restyle(id,{visible:false},[CUST_IDX]));}
+
+function highlightScen(scen){
+  LINE_IDS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el||!el.data)return;
+    const n=el.data.length,ws=[],os=[];
+    for(let i=0;i<n;i++){
+      const isC=(i===CUST_IDX),s=ALL_SCENS[i];
+      const sel=scen==='custom'?isC:s===scen;
+      ws.push(sel?3.0:0.9);os.push(sel?1.0:0.22);
+    }
+    Plotly.restyle(id,{'line.width':ws,'opacity':os});
+  });
+}
+
+/* ── KPIs ────────────────────────────────────────────────────────────────── */
+function cc(v){
+  if(!v||v==='N/A')return'';
+  const n=parseFloat(v.replace(/[$,B%+]/g,''));
+  if(isNaN(n)){return v==='PASS'?'pos':v==='WARN'?'wrn':v==='FAIL'?'neg':'';}
+  return n<0?'neg':n>0?'pos':'';
+}
+function setKV(id,v){const el=document.getElementById(id);if(!el)return;el.textContent=v;el.className='kv '+cc(v);}
+
+function updateKPIs(scen){
+  const d=scen==='custom'?customKPI:KPI_DATA[scen];if(!d)return;
+  const col=SCEN_COLORS[scen];
+  document.querySelectorAll('.kpi').forEach(c=>{c.style.setProperty('--ac',col);c.style.borderTopColor=col;});
+  setKV('kv-rev',d.final_revenue);setKV('kv-ebitda',d.final_ebitda);
+  document.getElementById('ks-margin').textContent='avg: '+d.ebitda_margin;
+  setKV('kv-cash',d.final_cash);
+  document.getElementById('ks-mincash').textContent='min: '+(d.min_cash||'N/A');
+  setKV('kv-revl',d.peak_revolver);
+  const st=d.diagnostic_status||'—';
+  setKV('kv-diag',st);
+  document.getElementById('ks-diag').textContent=d.hard_pass?'✓ hard pass':'✗ hard fail';
+  const b=document.getElementById('gbadge');
+  b.className='badge';b.classList.add(st==='PASS'?'bp':st==='WARN'?'bw':st==='FAIL'?'bf':'bu');
+  b.textContent='● '+st;
+}
+
+/* ── Assumptions panel ───────────────────────────────────────────────────── */
+function updateAssump(scen){
+  const lbl=document.getElementById('assump-lbl');
+  const body=document.getElementById('assump-body');
+  lbl.textContent='▸ '+SCEN_LABELS[scen];lbl.style.color=SCEN_COLORS[scen];
+  if(scen==='custom'){
+    body.innerHTML=[
+      ['Gross Margin',(CA.gm*100).toFixed(1)+'%'],['OpEx Ratio',(CA.opex*100).toFixed(1)+'%'],
+      ['Volume Growth',(CA.vol*100).toFixed(2)+'%/Q'],['Price Growth',(CA.price*100).toFixed(2)+'%/Q'],
+      ['DIO (days)',CA.dio!=null?CA.dio.toFixed(1):'NULL'],['DSO (days)',CA.dso!=null?CA.dso.toFixed(3):'NULL'],
+      ['DPO (days)',CA.dpo!=null?CA.dpo.toFixed(3):'NULL'],['CapEx / Sales',(CA.capex*100).toFixed(3)+'%'],
+      ['Cash Floor','$'+CA.floor+'M'],['Revolver Limit','$'+CA.rlimit+'M'],
+    ].map(([k,v])=>`<div class="arow"><span class="ak">${k}</span><span class="av" style="color:var(--c-cust)">${v}</span></div>`).join('')
+;
+  } else {
+    const d=ASSUMP_DISP[scen];if(!d)return;
+    body.innerHTML=Object.entries(d).map(([k,v])=>
+      `<div class="arow"><span class="ak">${k}</span><span class="av">${v}</span></div>`).join('');
+  }
+}
+
+/* ── Comparison table ────────────────────────────────────────────────────── */
+function buildCompTable(){
+  const tb=document.getElementById('comp-body');tb.innerHTML='';
+  COMP_ROWS.forEach(r=>{
+    const td4=ALL_SCENS.map((s,i)=>`<td class="${['col-b','col-u','col-d','col-l'][i]}">${KPI_DATA[s]?.[r.key]??'—'}</td>`).join('');
+    tb.insertAdjacentHTML('beforeend',`<tr><td>${r.label}</td>${td4}<td class="col-c" id="ct-${r.key}" style="display:none">—</td></tr>`);
+  });
+}
+
+function updateCompCustom(visible){
+  document.getElementById('cust-hdr').style.display=visible?'':'none';
+  COMP_ROWS.forEach(r=>{
+    const el=document.getElementById('ct-'+r.key);if(!el)return;
+    el.style.display=visible?'':'none';
+    if(visible&&customKPI)el.textContent=customKPI[r.key]??'—';
+  });
+}
+
+/* ── Diagnostics ─────────────────────────────────────────────────────────── */
+function updateDiag(scen){
+  const dm=DIAG_STATUS[scen]||{},dc=DIAG_CHECKS[scen]||{};
+  document.getElementById('diag-id').textContent='Scenario: '+SCEN_LABELS[scen]+'  ·  Run ID: '+(dm.run_id||'N/A');
+  const g=document.getElementById('diag-grid');g.innerHTML='';
+  if(scen==='custom'&&customKPI){
+    const kpi=customKPI;
+    [
+      ['Cash Roll-Forward ✓',        true,              'Accounting identity — always holds'],
+      ['BS Tie (<$500M residual)',    kpi.bs_max<=500,   `Max residual: ${(kpi.bs_max/1000).toFixed(1)}B`],
+      ['Revolver ≤ $15B Limit',      kpi.revl_ok,       'Facility hard cap'],
+      ['Cash ≥ Floor Every Quarter', kpi.cash_ok,       'Liquidity constraint'],
+      ['EBITDA > 0 Every Quarter',   !kpi.neg_eb,       'Soft check — operating viability'],
+      ['All Hard Checks Pass',       kpi.hard_pass,     'BS tie + revolver + cash floor'],
+    ].forEach(([l,p,hint])=>g.insertAdjacentHTML('beforeend',
+      `<div class="di" title="${hint}"><span class="lt ${p?'pass':'fail'}"></span><span class="dt">${l}</span></div>`));
+    // Live ICR callout
+    const icrColor=kpi.icr_ok?'var(--green)':kpi.icr_warn?'var(--gold)':'var(--red)';
+    g.insertAdjacentHTML('beforeend',
+      `<div style="grid-column:1/-1;margin-top:6px;padding:6px 8px;background:rgba(0,0,0,.3);
+        border-left:2px solid ${icrColor};font-family:var(--mono);font-size:8.5px;line-height:1.6;color:var(--txt-d)">
+        <span style="color:${icrColor};font-weight:600">Interest Coverage: ${kpi.min_icr_str} min · ${kpi.avg_icr_str} avg</span><br>
+        Boeing pays ~$675M/quarter in interest on $54B debt. ICR ≥ 1.0x means EBITDA covers interest.
+        Current base case ICR ≈ 0.18x — the balance sheet, not operations, is the binding constraint.
+      </div>`);
+    return;
+  }
+  DIAG_LIST.forEach(c=>{
+    let v=c.src==='diag'?dm[c.key]:dc[c.key];
+    let lc='warn';
+    if(typeof v==='boolean')lc=(c.inv?!v:v)?'pass':'fail';
+    g.insertAdjacentHTML('beforeend',`<div class="di"><span class="lt ${lc}"></span><span class="dt">${c.label}</span></div>`);
+  });
+}
+
+/* ── Sliders ─────────────────────────────────────────────────────────────── */
+const FMT={pct:v=>(v*100).toFixed(1)+'%',pct2:v=>(v*100).toFixed(2)+'%',days:v=>v.toFixed(0),days1:v=>v.toFixed(1)};
+
+function onSlider(key,val,fmt){
+  CA[key]=val;
+  const el=document.getElementById('sv-'+key);
+  if(el)el.textContent=(FMT[fmt]||FMT.pct)(val);
+  runCustom();
+}
+
+function runCustom(){
+  const rows=runForecast(CA);
+  customKPI=calcCustomKPI(rows);
+  updateCustomTraces(rows,true);
+  if(currentScen==='custom'){
+    updateKPIs('custom');updateAssump('custom');
+    updateDiag('custom');updateCompCustom(true);
+    highlightScen('custom');
+  }
+}
+
+function resetCustom(){
+  // Always re-init from ASSUMP_RAW so Reset to Base == Named Base, guaranteed.
+  initCA();
+  const setSlider=(id,v,pct)=>{
+    const e=document.getElementById('sl-'+id);
+    if(e) e.value = pct ? +(v*100).toFixed(6) : +v;
+  };
+  setSlider('gm',   CA.gm,   true);
+  setSlider('opex', CA.opex, true);
+  setSlider('vol',  CA.vol,  true);
+  setSlider('price',CA.price,true);
+  setSlider('capex',CA.capex,true);
+  setSlider('dio',  CA.dio,  false);
+  setSlider('dso',  CA.dso,  false);
+  setSlider('dpo',  CA.dpo,  false);
+  document.getElementById('sv-gm').textContent   =(CA.gm   *100).toFixed(1)+'%';
+  document.getElementById('sv-opex').textContent =(CA.opex *100).toFixed(1)+'%';
+  document.getElementById('sv-vol').textContent  =(CA.vol  *100).toFixed(2)+'%';
+  document.getElementById('sv-price').textContent=(CA.price*100).toFixed(2)+'%';
+  document.getElementById('sv-capex').textContent=(CA.capex*100).toFixed(2)+'%';
+  document.getElementById('sv-dio').textContent  = CA.dio.toFixed(0);
+  document.getElementById('sv-dso').textContent  = CA.dso.toFixed(1);
+  document.getElementById('sv-dpo').textContent  = CA.dpo.toFixed(1);
+  runCustom();
+}
+
+/* ── Scenario switching ──────────────────────────────────────────────────── */
+let currentScen='base';
+function setScen(scen){
+  currentScen=scen;
+  // Update tab active states
+  document.querySelectorAll('.tab').forEach(t=>{
+    const onclick=t.getAttribute('onclick')||'';
+    t.classList.toggle('active', onclick.includes("'"+scen+"'"));
+  });
+  // Show/hide panels
+  const isSens   = scen==='sensitivity';
+  const isCust   = scen==='custom';
+  document.getElementById('custom-panel').classList.toggle('visible', isCust);
+  document.getElementById('sens-panel').style.display = isSens ? 'block' : 'none';
+  // Show/hide main content when sensitivity tab is active
+  document.querySelector('.kpis').style.display = isSens ? 'none' : '';
+  document.querySelector('.bot').style.display  = isSens ? 'none' : '';
+  document.querySelectorAll('.g2').forEach(e=>{ e.style.display = isSens ? 'none' : ''; });
+  // Scenario-specific updates
+  if(isCust) {
+    runCustom();
+    updateCompCustom(true);
+  } else {
+    hideCustom();
+    updateCompCustom(false);
+    if(!isSens) {
+      updateKPIs(scen);
+      updateAssump(scen);
+      updateDiag(scen);
+      highlightScen(scen);
+    }
+  }
+}
+
+/* ── Resize ──────────────────────────────────────────────────────────────── */
+window.addEventListener('resize',()=>{
+  ['ch-rev','ch-ebitda','ch-cash','ch-revl','ch-cfo'].forEach(id=>{
+    const e=document.getElementById(id);if(e)Plotly.Plots.resize(e);
+  });
+},{passive:true});
+
+/* ── Boot ────────────────────────────────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded',()=>{
+  initCA();          // populate CA 100% from ASSUMP_RAW.base before anything else
+  initCharts();
+  buildCompTable();
+  runCustom();       // pre-warm engine
+  setScen('base');
+});
+</script>
+</body>
+</html>
