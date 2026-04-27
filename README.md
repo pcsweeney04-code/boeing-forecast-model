@@ -12,3 +12,4 @@
 We built a three-statement financial model forecasting Boeing over the next four years across four scenarios. The dashboard lets you interact with the model live.
 The rest of the files (Jupyter notebook, data, scripts) are also included.
 The "outputs" folder is not included for simplicity.
+[View all project files →](https://github.com/pcsweeney04-code/boeing-forecast-model)
