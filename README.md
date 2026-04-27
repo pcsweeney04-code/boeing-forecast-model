@@ -3,7 +3,7 @@
 
 ---
 
-**[→ Open the Interactive Dashboard](Boeing_155_Case_Sweeney_Dash.html)** ← start here, open in Chrome
+**[→ Open the Interactive Dashboard](Boeing_155_Case_Sweeney_Dash.html)** ← start here
 
 **[→ Read the Written Analysis](Boeing_155_Case_Sweeney_Cap.pdf)**
 
