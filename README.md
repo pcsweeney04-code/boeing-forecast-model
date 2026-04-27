@@ -9,6 +9,6 @@
 
 ---
 
-We built a three-statement financial model forecasting Boeing over the next four years across four scenarios. The dashboard lets you interact with the model live — switch between scenarios, move sliders, and see how the outputs change in real time.
-
-The rest of the files (Jupyter notebook, data, scripts) are included for anyone who wants to look under the hood.
+We built a three-statement financial model forecasting Boeing over the next four years across four scenarios. The dashboard lets you interact with the model live.
+The rest of the files (Jupyter notebook, data, scripts) are also included.
+The "outputs" folder is not included for simplicity.
